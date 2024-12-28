@@ -1,66 +1,65 @@
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
 
 public class Main {
     public static void main(String[] args) {
+        String filePath = "source.txt";
         try {
-            List<String> lines = Files.lines(Paths.get("source.txt"))
-                    .map(String::trim)
-                    .filter(line -> !line.isEmpty())
-                    .peek(Main::validateNumber)
-                    .collect(Collectors.toList());
+            List<String> numbers = Files.readAllLines(Paths.get(filePath));
 
-            if (lines.isEmpty()) {
-                throw new IOException("Файл порожній або не містить валідних чисел.");
-            }
+            List<String> sequence = buildPuzzle(numbers);
 
-            String longestSequence = findLongestSequence(lines);
-
-            System.out.println("Найдовша послідовність: " + longestSequence);
-
+            StringBuilder builder = new StringBuilder();
+            sequence.forEach(builder::append);
+            System.out.println("Побудована послідовність:");
+            System.out.println(builder);
+            System.out.println(builder.length());
         } catch (IOException e) {
             System.err.println("Помилка читання файлу: " + e.getMessage());
         }
     }
 
-    private static String findLongestSequence(List<String> lines) {
-        String longestSequence = lines.get(0);
-        StringBuilder currentSequence = new StringBuilder(lines.get(0));
+    public static List<String> buildPuzzle(List<String> numbers) {
+        if (numbers.isEmpty()) return Collections.emptyList();
 
-        for (int i = 1; i < lines.size(); i++) {
-            String prevLine = lines.get(i - 1);
-            String nextLine = lines.get(i);
+        List<String> result = new ArrayList<>();
+        Set<String> used = new HashSet<>();
 
-            if (prevLine.substring(prevLine.length() - 2).equals(nextLine.substring(0, 2))) {
-                currentSequence.append(nextLine.substring(2));
-            } else {
-                if (currentSequence.length() > longestSequence.length()) {
-                    longestSequence = currentSequence.toString();
+        String current = numbers.get(0);
+        result.add(current);
+        used.add(current);
+
+        while (true) {
+            String bestNext = null;
+            int maxLength = -1;
+
+            for (String next : numbers) {
+                if (used.contains(next)) continue;
+
+                String currentSuffix = current.substring(current.length() - 2);
+                String nextPrefix = next.substring(0, 2);
+                String nextSuffix = next.substring(next.length() - 2);
+
+                if (currentSuffix.equals(nextPrefix) || currentSuffix.equals(nextSuffix)) {
+                    int potentialLength = result.size() + 1;
+
+                    if (potentialLength > maxLength) {
+                        maxLength = potentialLength;
+                        bestNext = next;
+                    }
                 }
-                currentSequence = new StringBuilder(nextLine);
+            }
+
+            if (bestNext != null) {
+                result.add(bestNext);
+                used.add(bestNext);
+                current = bestNext;
+            } else {
+                break;
             }
         }
 
-        if (currentSequence.length() > longestSequence.length()) {
-            longestSequence = currentSequence.toString();
-        }
-
-        return longestSequence;
-    }
-
-    private static void validateNumber(String number) {
-        try {
-            if (!number.matches("\\d+")) {
-                throw new InvalidNumberException("Число \"" + number + "\" містить некоректні символи.");
-            }
-            if (number.length() < 4) {
-                throw new InvalidNumberException("Число \"" + number + "\" має менше ніж 4 цифри.");
-            }
-        } catch (InvalidNumberException e) {
-            throw new RuntimeException("Невалідний рядок: " + number + ". Причина: " + e.getMessage());
-        }
+        return result;
     }
 }
